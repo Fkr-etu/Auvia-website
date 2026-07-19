@@ -15,7 +15,11 @@ export default function App() {
     specialty: "Omnipratique & Chirurgie",
     region: "Île-de-France",
     practiceMode: "Libéral individuel",
-    interests: ["Radioprotection", "Stérilisation", "DASRI", "RGPD"]
+    interests: ["Radioprotection", "Stérilisation", "DASRI", "RGPD"],
+    subscriptionTier: "trial",
+    subscriptionStatus: "trialing",
+    subscriptionEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("fr-FR"),
+    billingHistory: []
   });
 
   // Quick helper to return back to landing
@@ -60,7 +64,7 @@ export default function App() {
             <button 
               id="sidebar-saas-btn"
               onClick={() => setView("saas")}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 text-white transition-all text-left"
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all text-left ${view === "saas" ? "bg-white/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
             >
               <Laptop className="w-4 h-4 text-[#4FD1C5]" />
               Écran de Démo SaaS
