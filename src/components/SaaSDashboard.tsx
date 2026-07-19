@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Compass, AlertTriangle, ShieldCheck, CheckCircle2, Circle, 
   HelpCircle, Trash2, Calendar, FileText, Send, Sparkles, User, Settings, Info, Bell,
-  Search, Upload, ArrowRight, History, Plus, Check, Layers, X, FileCode, Activity, FileDown
+  Search, Upload, ArrowRight, History, Plus, Check, Layers, X, FileCode, Activity, FileDown,
+  CreditCard, Lock, RefreshCw, Eye, Landmark, Receipt, Download
 } from "lucide-react";
-import { UserProfile, RegulatoryAlert, ActionItem } from "../types";
+import { UserProfile, RegulatoryAlert, ActionItem, BillingInvoice } from "../types";
 
 interface SaaSDashboardProps {
   profile?: UserProfile;
@@ -34,7 +35,11 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
     specialty: "Omnipratique & Chirurgie",
     region: "Île-de-France",
     practiceMode: "Libéral individuel",
-    interests: ["Radioprotection", "Stérilisation", "DASRI", "RGPD"]
+    interests: ["Radioprotection", "Stérilisation", "DASRI", "RGPD"],
+    subscriptionTier: "trial",
+    subscriptionStatus: "trialing",
+    subscriptionEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("fr-FR"),
+    billingHistory: []
   });
 
   const profile = externalProfile || internalProfile;
@@ -43,10 +48,10 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [doctorName, setDoctorName] = useState("Dr Martin");
 
-  // Active navigation tab within the workspace: "dashboard" or "library"
-  const [activeTab, setActiveTab] = useState<"dashboard" | "library">("dashboard");
+  // Active navigation tab within the workspace: "dashboard", "library", or "billing"
+  const [activeTab, setActiveTab] = useState<"dashboard" | "library" | "billing">("dashboard");
 
-  // 2. State for Custom seeded protocols
+  // State for Custom seeded protocols
   const [protocols, setProtocols] = useState<Protocol[]>([
     {
       id: "prot-1",
@@ -136,11 +141,11 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
     }
   ]);
 
-  // 4. Library Search & Filters
+  // Library Search & Filters
   const [librarySearch, setLibrarySearch] = useState("");
   const [libraryFilter, setLibraryFilter] = useState<"all" | "conforme" | "verify" | "obsolete">("all");
 
-  // 5. Interactive Upload Simulator (Section 11, 12, 13)
+  // Interactive Upload Simulator (Section 11, 12, 13)
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgressStep, setUploadProgressStep] = useState(0);
@@ -148,12 +153,23 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
   const [showAnalysisResult, setShowAnalysisResult] = useState(false);
   const [analyzedProtocolData, setAnalyzedProtocolData] = useState<any>(null);
 
-  // 6. Interactive Update Wizard Workflow (Section 14)
+  // Interactive Update Wizard Workflow (Section 14)
   const [activeWizardProtocol, setActiveWizardProtocol] = useState<Protocol | null>(null);
   const [wizardStep, setWizardStep] = useState<"detect" | "compare" | "proposal" | "success" | null>(null);
   const [wizardProposalText, setWizardProposalText] = useState("");
 
-  // 7. Chat State (Auvia AI Companion)
+  // Stripe Checkout inside Dashboard State
+  const [showDashboardStripe, setShowDashboardStripe] = useState(false);
+  const [selectedDashboardPlan, setSelectedDashboardPlan] = useState<{ id: "solo" | "cabinet" | "clinique", title: string, price: number } | null>(null);
+  const [stripeStatus, setStripeStatus] = useState<"form" | "loading" | "success">("form");
+  const [dbCardHolder, setDbCardHolder] = useState("Dr Lucie Martin");
+  const [dbCardNum, setDbCardNum] = useState("4242 4242 4242 4242");
+
+  // Upgrade Gate Banner
+  const [showGateBanner, setShowGateBanner] = useState(false);
+  const [gateReason, setGateReason] = useState<"protocol_limit" | "pdf_download">("protocol_limit");
+
+  // Chat State (Auvia AI Companion)
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState<{ sender: "user" | "ai"; text: string; isMock?: boolean }[]>([
     { sender: "ai", text: `Bonjour ${doctorName}. Je suis Auvia, votre premier compagnon intelligent qui veille sur l'évolution réglementaire de votre profession libérale, analyse son impact sur vos protocoles internes (hygiène, qualité, procédures de soins) et guide votre équipe vers l'action. Comment puis-je vous aider ce matin ?` }
@@ -172,6 +188,16 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
       return prev;
     });
   }, [doctorName]);
+
+  // Billing history auto-generation
+  useEffect(() => {
+    if (profile && !profile.billingHistory) {
+      setProfile({
+        ...profile,
+        billingHistory: []
+      });
+    }
+  }, [profile]);
 
   // Handlers
   const handleToggleAction = (id: string) => {
@@ -223,7 +249,24 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
     handleSendChatMessage(msg);
   };
 
-  // Simulate file drop / select (Section 11, 12, 13)
+  // Simulate file drop / select (Section 11, 12, 13 with Feature Gate check!)
+  const triggerFileUploadClick = () => {
+    const isTrial = !profile.subscriptionTier || profile.subscriptionTier === "trial";
+    // Check if we already have 4 or more protocols (which is > 3, the limit of Free Trial)
+    if (isTrial && protocols.length >= 3) {
+      setGateReason("protocol_limit");
+      setShowGateBanner(true);
+      return;
+    }
+
+    const fileSamples = ["Protocole_extraction_dentaire_v2024.pdf", "Procedure_desinfection_hygiene.docx", "Fiche_traçabilité_autoclave.txt"];
+    const picked = prompt("Simuler l'importation de quel fichier ?\n\n1. " + fileSamples[0] + "\n2. " + fileSamples[1] + "\n3. " + fileSamples[2], "1");
+    if (picked === "1") simulateFileUpload(fileSamples[0]);
+    else if (picked === "2") simulateFileUpload(fileSamples[1]);
+    else if (picked === "3") simulateFileUpload(fileSamples[2]);
+    else if (picked) simulateFileUpload(picked);
+  };
+
   const simulateFileUpload = (filename: string) => {
     setUploadedFileName(filename);
     setIsUploading(true);
@@ -278,6 +321,14 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+
+    const isTrial = !profile.subscriptionTier || profile.subscriptionTier === "trial";
+    if (isTrial && protocols.length >= 3) {
+      setGateReason("protocol_limit");
+      setShowGateBanner(true);
+      return;
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       simulateFileUpload(e.dataTransfer.files[0].name);
     }
@@ -328,6 +379,76 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
     setWizardStep("success");
   };
 
+  // Upgrade in Stripe Portal Handler
+  const openDashboardStripeCheckout = (planId: "solo" | "cabinet" | "clinique", title: string, price: number) => {
+    setSelectedDashboardPlan({ id: planId, title, price });
+    setStripeStatus("form");
+    setShowDashboardStripe(true);
+  };
+
+  const submitDashboardStripePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    setStripeStatus("loading");
+
+    setTimeout(() => {
+      setStripeStatus("success");
+
+      if (selectedDashboardPlan) {
+        const newInvoice: BillingInvoice = {
+          id: "inv-" + Math.floor(Math.random() * 9000000 + 1000000),
+          date: new Date().toLocaleDateString("fr-FR"),
+          amount: selectedDashboardPlan.price,
+          status: "paid",
+          pdfUrl: "#"
+        };
+
+        setProfile({
+          ...profile,
+          subscriptionTier: selectedDashboardPlan.id,
+          subscriptionStatus: "active",
+          subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("fr-FR"),
+          billingHistory: [newInvoice, ...(profile.billingHistory || [])]
+        });
+      }
+    }, 1800);
+  };
+
+  // Cancel subscription simulation
+  const handleCancelSubscription = () => {
+    if (confirm("Êtes-vous sûr de vouloir résilier votre abonnement Auvia ? Vos protocoles ne seront plus surveillés automatiquement.")) {
+      setProfile({
+        ...profile,
+        subscriptionStatus: "canceled"
+      });
+      alert("Votre abonnement a été résilié et prendra fin le " + (profile.subscriptionEndDate || "prochainement") + ".");
+    }
+  };
+
+  // Reactivate subscription simulation
+  const handleReactivateSubscription = () => {
+    setProfile({
+      ...profile,
+      subscriptionStatus: "active"
+    });
+    alert("Votre abonnement a été réactivé avec succès !");
+  };
+
+  // Simulated invoice download
+  const handleDownloadInvoice = (inv: BillingInvoice) => {
+    alert(`Génération du PDF de la facture ${inv.id}\nMontant : ${inv.amount} €\nStatut : PAYÉ\n\nVotre téléchargement commencera sous peu.`);
+  };
+
+  // PDF Download Gate check
+  const checkPdfDownloadGate = () => {
+    const isTrial = !profile.subscriptionTier || profile.subscriptionTier === "trial";
+    if (isTrial) {
+      setGateReason("pdf_download");
+      setShowGateBanner(true);
+    } else {
+      alert("Génération et téléchargement du PDF clinique validé de " + activeWizardProtocol?.title + " v" + (parseFloat(activeWizardProtocol?.version.replace("v", "") || "1.0") + 0.1).toFixed(1));
+    }
+  };
+
   // Compute stats
   const activeActionsCount = actions.filter(a => !a.completed).length;
   const docsVerifiedCount = protocols.filter(p => p.status === "conforme").length;
@@ -346,7 +467,7 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
   });
 
   return (
-    <div id="saas-dashboard-container" className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div id="saas-dashboard-container" className="min-h-screen bg-[#F8FAFC] flex flex-col relative">
       
       {/* SaaS Dashboard Top Info Bar */}
       <header className="bg-[#0A192F] text-white px-6 py-5 border-b border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -356,6 +477,15 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
               Copilote Réglementaire Actif
             </span>
             <span className="text-slate-400 text-xs font-mono font-bold">Cabinet connecté</span>
+            {profile.subscriptionTier && profile.subscriptionTier !== "trial" ? (
+              <span className="text-[9px] bg-[#006a63] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3" /> PRO : {profile.subscriptionTier.toUpperCase()}
+              </span>
+            ) : (
+              <span className="text-[9px] bg-amber-600 text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> ESSAI GRATUIT
+              </span>
+            )}
           </div>
           <div className="flex items-baseline gap-2 pt-1">
             <h1 className="font-display font-extrabold text-xl text-white">
@@ -404,6 +534,18 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
           >
             <Layers className="w-3.5 h-3.5" />
             Mes Protocoles ({totalDocsCount})
+          </button>
+          <button
+            id="tab-billing"
+            onClick={() => setActiveTab("billing")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all ${
+              activeTab === "billing"
+                ? "bg-[#006a63] text-white shadow-sm"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            Abonnement & Factures
           </button>
         </div>
       </header>
@@ -1003,14 +1145,7 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
 
                   <div className="relative mt-4">
                     <button
-                      onClick={() => {
-                        const fileSamples = ["Protocole_extraction_dentaire_v2024.pdf", "Procedure_desinfection_hygiene.docx", "Fiche_traçabilité_autoclave.txt"];
-                        const picked = prompt("Simuler l'importation de quel fichier ?\n\n1. " + fileSamples[0] + "\n2. " + fileSamples[1] + "\n3. " + fileSamples[2], "1");
-                        if (picked === "1") simulateFileUpload(fileSamples[0]);
-                        else if (picked === "2") simulateFileUpload(fileSamples[1]);
-                        else if (picked === "3") simulateFileUpload(fileSamples[2]);
-                        else if (picked) simulateFileUpload(picked);
-                      }}
+                      onClick={triggerFileUploadClick}
                       className="px-4 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-[#0A192F] text-xs font-bold rounded-xl shadow-sm transition-all inline-flex items-center gap-1.5"
                     >
                       <FileText className="w-3.5 h-3.5 text-slate-500" />
@@ -1135,6 +1270,228 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
                     </div>
                   </div>
                 )}
+
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* ====================================================== */}
+        {/* TAB 3: STRIPE CUSTOMER PORTAL / ABONNEMENT & FACTURES */}
+        {/* ====================================================== */}
+        {activeTab === "billing" && (
+          <div className="lg:col-span-12 space-y-6 animate-fadeIn">
+
+            {/* Header */}
+            <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-1">
+                <span className="text-[10px] font-mono font-bold text-[#006a63] uppercase tracking-wider bg-teal-50 px-2.5 py-0.5 rounded-full">
+                  Portail Client Stripe
+                </span>
+                <h2 className="font-display font-extrabold text-lg text-[#0A192F]">
+                  Gestion d'Abonnement & Facturation
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Consultez votre formule, mettez à jour votre carte bancaire et accédez à vos factures certifiées.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono bg-slate-50 border border-slate-100 px-3.5 py-2 rounded-xl">
+                <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" /> Flux de facturation crypté
+              </div>
+            </div>
+
+            {/* Main Billing Grid */}
+            <div className="grid lg:grid-cols-12 gap-6 items-start">
+
+              {/* Left Side: Current Subscription details */}
+              <div className="lg:col-span-7 space-y-6">
+
+                {/* Active Plan Detail */}
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
+                  <h3 className="font-display font-extrabold text-sm text-[#0A192F] uppercase tracking-wider border-b border-slate-50 pb-3 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-[#006a63]" />
+                    Formule Active
+                  </h3>
+
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">ABONNEMENT ACTIF</span>
+                      <h4 className="font-display font-extrabold text-lg text-[#0a192f] leading-snug">
+                        {profile.subscriptionTier === "trial" && "Essai Gratuit (14 jours)"}
+                        {profile.subscriptionTier === "solo" && "Individuel Solo"}
+                        {profile.subscriptionTier === "cabinet" && "Cabinet Plus"}
+                        {profile.subscriptionTier === "clinique" && "Clinique & Groupe"}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {profile.subscriptionStatus === "trialing" && "Période d'évaluation en cours."}
+                        {profile.subscriptionStatus === "active" && "Abonnement en cours de validité."}
+                        {profile.subscriptionStatus === "canceled" && "Résilié. Se terminera le " + profile.subscriptionEndDate + "."}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 sm:text-right shrink-0">
+                      <div className="font-mono font-extrabold text-[#006a63] text-xl">
+                        {profile.subscriptionTier === "trial" && "0,00 €"}
+                        {profile.subscriptionTier === "solo" && "29,00 €"}
+                        {profile.subscriptionTier === "cabinet" && "79,00 €"}
+                        {profile.subscriptionTier === "clinique" && "199,00 €"}
+                      </div>
+                      <span className="text-[10px] text-slate-400 block font-semibold uppercase">
+                        {profile.subscriptionTier === "trial" ? "Aucun prélèvement" : "Prélèvement mensuel"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Renew info / Actions */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
+                    <div className="space-y-0.5 text-xs text-slate-500">
+                      <p>
+                        <strong>Prochaine facture :</strong> {profile.subscriptionEndDate || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Moyen de paiement :</strong> Carte Visa terminant par <strong className="font-mono">4242</strong>
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {profile.subscriptionStatus === "active" ? (
+                        <button
+                          onClick={handleCancelSubscription}
+                          className="px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 text-xs font-bold rounded-xl transition-all"
+                        >
+                          Résilier l'abonnement
+                        </button>
+                      ) : profile.subscriptionStatus === "canceled" ? (
+                        <button
+                          onClick={handleReactivateSubscription}
+                          className="px-4 py-2 bg-[#006a63] text-white hover:bg-[#005550] text-xs font-bold rounded-xl transition-all shadow-sm"
+                        >
+                          Réactiver l'abonnement
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 font-bold italic">Essai non-facturé</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Change pricing formula directly */}
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
+                  <h3 className="font-display font-extrabold text-sm text-[#0A192F] uppercase tracking-wider border-b border-slate-50 pb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#006a63]" />
+                    Changer de Formule de Service
+                  </h3>
+
+                  <div className="grid sm:grid-cols-3 gap-4 pt-1">
+                    {[
+                      { id: "solo", title: "Individuel Solo", price: 29, limit: "5 protocoles" },
+                      { id: "cabinet", title: "Cabinet Plus", price: 79, limit: "20 protocoles" },
+                      { id: "clinique", title: "Clinique", price: 199, limit: "Illimités" }
+                    ].map((formula) => {
+                      const isActive = profile.subscriptionTier === formula.id;
+
+                      return (
+                        <div
+                          key={formula.id}
+                          className={`border rounded-2xl p-4 flex flex-col justify-between space-y-3 transition-all ${
+                            isActive
+                              ? "border-[#006a63] bg-teal-50/10 shadow-sm ring-1 ring-[#006a63]"
+                              : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-mono text-slate-400 font-bold block uppercase">ABONNEMENT</span>
+                            <h4 className="font-display font-bold text-xs text-[#0A192F]">{formula.title}</h4>
+                            <p className="text-[11px] text-slate-500 font-semibold">{formula.limit}</p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="font-mono text-sm font-extrabold text-[#006a63]">
+                              {formula.price} € <span className="text-[9px] text-slate-400">/ mois</span>
+                            </div>
+
+                            {isActive ? (
+                              <div className="w-full text-center py-1 bg-emerald-50 text-emerald-700 rounded text-[9px] font-bold uppercase tracking-wider">
+                                Formule Actuelle
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => openDashboardStripeCheckout(formula.id as any, formula.title, formula.price)}
+                                className="w-full py-1.5 bg-[#0a192f] hover:bg-slate-800 text-white text-[10px] font-bold rounded-lg transition-all"
+                              >
+                                Choisir via Stripe
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Side: Billing Invoices History */}
+              <div className="lg:col-span-5 space-y-6">
+
+                <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm space-y-4">
+                  <h3 className="font-display font-extrabold text-sm text-[#0A192F] uppercase tracking-wider border-b border-slate-50 pb-3 flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-[#006a63]" />
+                    Historique des Factures
+                  </h3>
+
+                  {!profile.billingHistory || profile.billingHistory.length === 0 ? (
+                    <div className="text-center py-12 space-y-2">
+                      <Receipt className="w-8 h-8 text-slate-300 mx-auto" />
+                      <p className="text-xs text-slate-400 font-bold">Aucune facture émise pour le moment.</p>
+                      <p className="text-[11px] text-slate-400">Les factures apparaîtront dès votre premier règlement Stripe.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {profile.billingHistory.map((invoice) => (
+                        <div
+                          key={invoice.id}
+                          className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#4FD1C5]/30 transition-all text-xs"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-[#0A192F]">{invoice.id}</span>
+                              <span className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-bold uppercase">
+                                PAYÉ
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">Émise le {invoice.date}</p>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <strong className="font-mono text-slate-800">{invoice.amount.toFixed(2)} €</strong>
+                            <button
+                              onClick={() => handleDownloadInvoice(invoice)}
+                              className="p-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-500 rounded-lg hover:text-[#006a63] transition-colors"
+                              title="Télécharger la facture PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Subcription Guarantee badge */}
+                <div className="bg-emerald-50/20 border border-emerald-500/10 rounded-3xl p-5 space-y-2">
+                  <h4 className="text-xs font-bold text-[#006a63] uppercase tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="w-4 h-4 text-[#4FD1C5]" />
+                    Garantie d'abonnement Auvia
+                  </h4>
+                  <p className="text-[11px] text-slate-600 leading-normal">
+                    Résiliation en 1 clic sans frais de rupture. Prise en compte immédiate. Pour toute question de facturation ou litige Stripe, contactez support@auvia.ai.
+                  </p>
+                </div>
 
               </div>
 
@@ -1395,7 +1752,7 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
                   </div>
                 )}
 
-                {/* STEP 4: SUCCESS */}
+                {/* STEP 4: SUCCESS WITH PDF DOWNLOAD GATED */}
                 {wizardStep === "success" && (
                   <div className="text-center py-8 space-y-6 animate-fadeIn">
                     <div className="w-20 h-20 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
@@ -1433,13 +1790,11 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
 
                     <div className="pt-2 flex justify-center gap-2">
                       <button
-                        onClick={() => {
-                          alert("Génération et téléchargement du PDF de la version v" + (parseFloat(activeWizardProtocol.version.replace("v", "")) + 0.1).toFixed(1) + " du protocole...");
-                        }}
+                        onClick={checkPdfDownloadGate}
                         className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-[#0A192F] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
                       >
                         <FileDown className="w-4 h-4" />
-                        Télécharger le PDF
+                        Télécharger le PDF clinique
                       </button>
                       <button
                         onClick={() => setWizardStep(null)}
@@ -1453,6 +1808,276 @@ export default function SaaSDashboard({ profile: externalProfile, setProfile: ex
 
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ====================================================== */}
+      {/* FEATURE GATE ALERTS & OVERLAYS                          */}
+      {/* ====================================================== */}
+      <AnimatePresence>
+        {showGateBanner && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg p-6 space-y-6 text-center"
+            >
+              <div className="w-14 h-14 bg-amber-50 text-amber-600 border border-amber-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                <Lock className="w-6 h-6 stroke-[2.5]" />
+              </div>
+
+              {gateReason === "protocol_limit" ? (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-mono font-bold text-amber-700 uppercase bg-amber-50 px-2 py-0.5 rounded">Limite d'Essai Atteinte</span>
+                  <h3 className="font-display font-extrabold text-lg text-[#0A192F]">
+                    Débloquez l'intégration de protocoles illimitée !
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    La formule Essai Gratuit est limitée à un maximum de <strong>3 protocoles</strong>. Passez sur notre offre professionnelle pour étendre la surveillance de votre cabinet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-mono font-bold text-amber-700 uppercase bg-amber-50 px-2 py-0.5 rounded font-bold">Option Réservée aux Membres</span>
+                  <h3 className="font-display font-extrabold text-lg text-[#0A192F]">
+                    Export PDF clinique réservé aux abonnés !
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
+                    Le téléchargement de PDF officiels scellés cliniquement requiert une formule active d'Auvia (Individuel Solo ou Cabinet Plus).
+                  </p>
+                </div>
+              )}
+
+              {/* Subcribe quick choices */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3 text-left">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <strong className="text-xs text-[#0a192f] block">Formule Individuel Solo</strong>
+                    <span className="text-[10px] text-slate-400 font-semibold">Jusqu'à 5 protocoles • PDF inclus</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowGateBanner(false);
+                      setActiveTab("billing");
+                      openDashboardStripeCheckout("solo", "Individuel Solo", 29);
+                    }}
+                    className="px-3 py-1.5 bg-[#0A192F] text-white text-[10px] font-bold rounded-lg hover:bg-slate-800"
+                  >
+                    29 € / mois
+                  </button>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-200/50 pt-3">
+                  <div>
+                    <strong className="text-xs text-[#0a192f] block">Formule Cabinet Plus</strong>
+                    <span className="text-[10px] text-slate-400 font-semibold">Jusqu'à 20 protocoles • Équipe</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowGateBanner(false);
+                      setActiveTab("billing");
+                      openDashboardStripeCheckout("cabinet", "Cabinet Plus", 79);
+                    }}
+                    className="px-3 py-1.5 bg-[#006a63] text-white text-[10px] font-bold rounded-lg hover:bg-[#005550]"
+                  >
+                    79 € / mois
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowGateBanner(false)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
+                <button
+                  onClick={() => {
+                    setShowGateBanner(false);
+                    setActiveTab("billing");
+                  }}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-[#0a192f] to-[#006a63] text-white text-xs font-bold rounded-xl transition-all shadow-md"
+                >
+                  Voir les abonnements
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ====================================================== */}
+      {/* DASHBOARD STRIPE PAYOUT SIMULATOR                      */}
+      {/* ====================================================== */}
+      <AnimatePresence>
+        {showDashboardStripe && selectedDashboardPlan && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row"
+            >
+              {/* stripe banner */}
+              <div className="bg-[#0A192F] text-white p-8 md:w-5/12 flex flex-col justify-between">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowDashboardStripe(false)}>
+                    <Compass className="w-5 h-5 text-[#4FD1C5]" />
+                    <span className="font-display font-extrabold text-sm tracking-tight text-white">Auvia</span>
+                  </div>
+
+                  <div className="space-y-1 pt-4">
+                    <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider block">MISE À NIVEAU</span>
+                    <h4 className="font-display font-extrabold text-base text-[#4FD1C5] leading-snug">{selectedDashboardPlan.title}</h4>
+                    <p className="text-[11px] text-slate-300">Renouvellement mensuel automatique. Sans engagement.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-12">
+                  <div className="flex justify-between items-baseline border-b border-white/10 pb-3">
+                    <span className="text-slate-400 text-xs font-semibold">Montant HT</span>
+                    <span className="text-slate-200 text-sm font-mono">{(selectedDashboardPlan.price / 1.2).toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-baseline border-b border-white/10 pb-3">
+                    <span className="text-slate-400 text-xs font-semibold">TVA (20%)</span>
+                    <span className="text-slate-200 text-sm font-mono">{(selectedDashboardPlan.price - (selectedDashboardPlan.price / 1.2)).toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-white font-bold text-sm">Total à payer</span>
+                    <span className="text-[#4FD1C5] text-2xl font-extrabold font-mono">{selectedDashboardPlan.price.toFixed(2)} €</span>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" /> Paiement sécurisé via Stripe
+                </div>
+              </div>
+
+              {/* pay form */}
+              <div className="bg-white p-8 flex-1 flex flex-col justify-between">
+                {stripeStatus === "form" && (
+                  <form onSubmit={submitDashboardStripePayment} className="space-y-5">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-1.5">
+                        <CreditCard className="w-5 h-5 text-slate-400" />
+                        <span className="text-xs font-bold text-[#0A192F] uppercase tracking-wider">Informations de carte</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowDashboardStripe(false)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <X className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase">Titulaire de la carte</label>
+                        <input
+                          type="text"
+                          value={dbCardHolder}
+                          onChange={(e) => setDbCardHolder(e.target.value)}
+                          className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase">Numéro de carte</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={dbCardNum}
+                            onChange={(e) => setDbCardNum(e.target.value)}
+                            placeholder="4242 4242 4242 4242"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                            required
+                          />
+                          <span className="absolute right-3.5 top-2.5 text-[9px] text-[#006a63] font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+                            TEST STRIPE
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase">Expiration</label>
+                          <input
+                            type="text"
+                            defaultValue="12/28"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase">CVC</label>
+                          <input
+                            type="password"
+                            defaultValue="123"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-[#006a63] hover:bg-[#005550] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 animate-pulse"
+                      >
+                        <Lock className="w-3.5 h-3.5" /> Confirmer le paiement sécurisé
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {stripeStatus === "loading" && (
+                  <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12 animate-fadeIn">
+                    <RefreshCw className="w-10 h-10 text-[#006a63] animate-spin stroke-[2.5]" />
+                    <div className="text-center space-y-1">
+                      <h4 className="font-display font-extrabold text-sm text-[#0A192F]">Authentification 3D Secure</h4>
+                      <p className="text-xs text-slate-400">Finalisation du prélèvement Stripe...</p>
+                    </div>
+                  </div>
+                )}
+
+                {stripeStatus === "success" && (
+                  <div className="flex-1 flex flex-col justify-between py-4 animate-fadeIn">
+                    <div className="text-center space-y-4 pt-4">
+                      <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                        <Check className="w-8 h-8 stroke-[3]" />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h4 className="font-display font-extrabold text-base text-[#0A192F]">Abonnement Activé !</h4>
+                        <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                          Votre cabinet est désormais équipé de la formule <strong>{selectedDashboardPlan.title}</strong> d'Auvia.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-8">
+                      <button
+                        onClick={() => {
+                          setShowDashboardStripe(false);
+                          setActiveTab("dashboard");
+                        }}
+                        className="w-full py-3 bg-[#0A192F] hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        Retourner au Pilotage
+                        <ArrowRight className="w-4 h-4 text-[#4FD1C5]" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

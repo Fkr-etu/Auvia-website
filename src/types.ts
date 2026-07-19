@@ -1,9 +1,21 @@
+export interface BillingInvoice {
+  id: string;
+  date: string;
+  amount: number;
+  status: "paid" | "failed" | "pending";
+  pdfUrl?: string;
+}
+
 export interface UserProfile {
   profession: string;
   specialty: string;
   region: string;
   practiceMode: string;
   interests: string[];
+  subscriptionTier?: "trial" | "solo" | "cabinet" | "clinique";
+  subscriptionStatus?: "trialing" | "active" | "canceled";
+  subscriptionEndDate?: string;
+  billingHistory?: BillingInvoice[];
 }
 
 export interface RegulatoryAlert {

@@ -1,11 +1,11 @@
 import React, { useState, useRef } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   Compass, Sparkles, Shield, Layers, ArrowRight, Activity, 
   HelpCircle, Laptop, Phone, CheckCircle2, AlertTriangle, 
-  User, Mail, Landmark, MapPin, Briefcase, Zap, Eye, FileText, Check, Clock, TrendingDown, RefreshCw
+  User, Mail, Landmark, MapPin, Briefcase, Zap, Eye, FileText, Check, Clock, TrendingDown, RefreshCw, X, CreditCard, Lock
 } from "lucide-react";
-import { UserProfile } from "../types";
+import { UserProfile, BillingInvoice } from "../types";
 
 interface LandingPageProps {
   onNavigate: (view: "landing" | "saas" | "mobile" | "brand") => void;
@@ -33,11 +33,26 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
   const [signupRegion, setSignupRegion] = useState("Île-de-France");
   const [formError, setFormError] = useState("");
 
+  // Stripe Checkout Simulator State
+  const [showStripeModal, setShowStripeModal] = useState(false);
+  const [selectedStripePlan, setSelectedStripePlan] = useState<{ id: "solo" | "cabinet" | "clinique", title: string, price: number } | null>(null);
+  const [stripeStep, setStripeStep] = useState<"form" | "loading" | "success">("form");
+  const [cardNumber, setCardNumber] = useState("4242 •••• •••• 4242");
+  const [cardExpiry, setCardExpiry] = useState("12/28");
+  const [cardCvc, setCardCvc] = useState("123");
+  const [cardHolder, setCardHolder] = useState("Dr Lucie Martin");
+  const [isStripeError, setIsStripeError] = useState(false);
+
   const accountRef = useRef<HTMLDivElement>(null);
+  const pricingRef = useRef<HTMLDivElement>(null);
 
   // Scroll helper
   const scrollToAccount = () => {
     accountRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const scrollToPricing = () => {
+    pricingRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   // Calculator computations
@@ -81,7 +96,6 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
   const handleFinalSignup = (e: React.FormEvent) => {
     e.preventDefault();
     if (setProfile) {
-      // Build interest list based on profession
       const interests = signupProfession === "Chirurgien-Dentiste" 
         ? ["Radioprotection", "Stérilisation", "DASRI", "RGPD"]
         : ["Radioprotection", "DASRI", "RGPD", "Général"];
@@ -91,10 +105,55 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
         specialty: signupSpecialty,
         region: signupRegion,
         practiceMode: signupPracticeMode,
-        interests: interests
+        interests: interests,
+        subscriptionTier: "trial",
+        subscriptionStatus: "trialing",
+        subscriptionEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("fr-FR"),
+        billingHistory: []
       });
     }
     setSignupStep(3);
+  };
+
+  const openStripeCheckout = (planId: "solo" | "cabinet" | "clinique", planTitle: string, planPrice: number) => {
+    setSelectedStripePlan({ id: planId, title: planTitle, price: planPrice });
+    setStripeStep("form");
+    setIsStripeError(false);
+    setShowStripeModal(true);
+  };
+
+  const handleStripePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cardNumber || !cardExpiry || !cardCvc || !cardHolder) {
+      setIsStripeError(true);
+      return;
+    }
+
+    setIsStripeError(false);
+    setStripeStep("loading");
+
+    // Simulate 2 seconds loading for Stripe authorization
+    setTimeout(() => {
+      setStripeStep("success");
+
+      // Update the user profile with the new subscription tier
+      if (setProfile && profile && selectedStripePlan) {
+        const newInvoice: BillingInvoice = {
+          id: "inv-" + Math.floor(Math.random() * 9000000 + 1000000),
+          date: new Date().toLocaleDateString("fr-FR"),
+          amount: selectedStripePlan.price,
+          status: "paid",
+          pdfUrl: "#"
+        };
+        setProfile({
+          ...profile,
+          subscriptionTier: selectedStripePlan.id,
+          subscriptionStatus: "active",
+          subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("fr-FR"),
+          billingHistory: [newInvoice, ...(profile.billingHistory || [])]
+        });
+      }
+    }, 2000);
   };
 
   const containerVariants = {
@@ -111,7 +170,7 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] overflow-x-hidden font-sans relative">
       
       {/* Premium Notification Banner */}
       <div className="bg-[#0A192F] text-slate-300 text-xs py-2.5 px-6 border-b border-slate-800 text-center flex items-center justify-center gap-2">
@@ -121,7 +180,7 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
       </div>
 
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4">
+      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate("landing")}>
             <div className="w-10 h-10 rounded-xl bg-[#0A192F] flex items-center justify-center text-[#4FD1C5]">
@@ -141,7 +200,7 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
             <a href="#pourquoi" className="hover:text-[#0A192F] transition-colors">Pourquoi Auvia</a>
             <a href="#fonctionnement" className="hover:text-[#0A192F] transition-colors">Comment ça marche</a>
-            <a href="#valeur" className="hover:text-[#0A192F] transition-colors">Bénéfices clés</a>
+            <button onClick={scrollToPricing} className="hover:text-[#0A192F] transition-colors">Formules & Tarifs</button>
             <button id="nav-brand-btn" onClick={() => onNavigate("brand")} className="hover:text-[#0A192F] transition-colors">
               Charte Graphique
             </button>
@@ -280,7 +339,7 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
               
               <div className="border-t border-slate-50 pt-4 flex justify-between items-center">
                 <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Compagnon de confiance</span>
-                <span className="text-xs font-bold text-[#0A192F] flex items-center gap-1">
+                <span className="text-xs font-bold text-[#0A192F] flex items-center gap-1" onClick={() => onNavigate("saas")}>
                   Explorer la démo <ArrowRight className="w-3.5 h-3.5 text-[#4FD1C5]" />
                 </span>
               </div>
@@ -690,6 +749,195 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
         </div>
       </section>
 
+      {/* NEW PRICING SECTION: Tarifs & Formules d'Abonnement */}
+      <section ref={pricingRef} className="py-20 px-6 bg-slate-50 border-y border-slate-100">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <div className="text-center space-y-4 max-w-3xl mx-auto">
+            <span className="text-xs font-mono font-bold tracking-widest text-[#006a63] uppercase bg-[#4FD1C5]/10 px-2.5 py-1 rounded-full">
+              Formules & Tarifs
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-[#0A192F] tracking-tight">
+              Une tarification claire, sans engagement.
+            </h2>
+            <p className="text-slate-500 text-sm sm:text-base">
+              Choisissez le niveau de sécurité et de pilotage adapté à la taille de votre cabinet libéral.
+            </p>
+          </div>
+
+          {/* Pricing Grid */}
+          <div className="grid md:grid-cols-4 gap-6 items-stretch">
+
+            {/* Plan 1: Free Trial */}
+            <div className="bg-white rounded-3xl border border-slate-200/60 p-6 flex flex-col justify-between hover:shadow-md transition-all relative">
+              <div className="space-y-4">
+                <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase">Version d'essai</span>
+                <h3 className="font-display font-extrabold text-xl text-[#0A192F]">Essai Gratuit</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#0A192F]">0 €</span>
+                  <span className="text-slate-400 text-xs">/ 14 jours</span>
+                </div>
+                <p className="text-xs text-slate-500">Pour tester le compagnon réglementaire sans carte bancaire.</p>
+
+                <ul className="space-y-2.5 text-xs text-slate-600 pt-4 border-t border-slate-50">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Jusqu'à <strong>3 protocoles</strong> suivis</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Assistant IA (RAG chat) basique</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-slate-400 line-through">
+                    <X className="w-3.5 h-3.5 text-red-400" />
+                    <span>Génération et export PDF illimité</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-slate-400 line-through">
+                    <X className="w-3.5 h-3.5 text-red-400" />
+                    <span>Accès multi-utilisateurs cabinet</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={scrollToAccount}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-[#0A192F] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
+                >
+                  Démarrer l'essai gratuit
+                </button>
+              </div>
+            </div>
+
+            {/* Plan 2: Solo */}
+            <div className="bg-white rounded-3xl border border-slate-200/60 p-6 flex flex-col justify-between hover:shadow-md transition-all relative">
+              <div className="space-y-4">
+                <span className="text-[10px] font-mono font-bold text-[#006a63] bg-teal-50 px-2 py-0.5 rounded uppercase">Praticien unique</span>
+                <h3 className="font-display font-extrabold text-xl text-[#0A192F]">Individuel Solo</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#0A192F]">29 €</span>
+                  <span className="text-slate-400 text-xs">/ mois</span>
+                </div>
+                <p className="text-xs text-slate-500">Idéal pour les professionnels de santé exerçant seuls en libéral.</p>
+
+                <ul className="space-y-2.5 text-xs text-slate-600 pt-4 border-t border-slate-50">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Jusqu'à <strong>5 protocoles</strong> suivis</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Assistant IA de veille personnalisé</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Export PDF des protocoles révisés</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-slate-400 line-through">
+                    <X className="w-3.5 h-3.5 text-red-400" />
+                    <span>Accès multi-utilisateurs cabinet</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={() => openStripeCheckout("solo", "Individuel Solo", 29)}
+                  className="w-full py-3 bg-[#0A192F] hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
+                >
+                  S'abonner via Stripe
+                </button>
+              </div>
+            </div>
+
+            {/* Plan 3: Cabinet Plus */}
+            <div className="bg-white rounded-3xl border-2 border-[#006a63] p-6 flex flex-col justify-between hover:shadow-lg transition-all relative">
+              <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[9px] font-bold bg-[#006a63] text-white px-3 py-1 rounded-full uppercase tracking-wider">
+                Formule Recommandée
+              </span>
+              <div className="space-y-4">
+                <span className="text-[10px] font-mono font-bold text-[#006a63] bg-teal-50 px-2 py-0.5 rounded uppercase">Cabinet & Équipe</span>
+                <h3 className="font-display font-extrabold text-xl text-[#0A192F]">Cabinet Plus</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#0A192F]">79 €</span>
+                  <span className="text-slate-400 text-xs">/ mois</span>
+                </div>
+                <p className="text-xs text-slate-500">Parfait pour les cabinets de groupe, SELARL ou MSP de taille moyenne.</p>
+
+                <ul className="space-y-2.5 text-xs text-slate-600 pt-4 border-t border-slate-50">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Jusqu'à <strong>20 protocoles</strong> suivis</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Moteur RAG de recherche & IA illimité</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span><strong>Multi-utilisateurs</strong> (jusqu'à 5 comptes)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Suivi et rapports d'audits ARS</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={() => openStripeCheckout("cabinet", "Cabinet Plus", 79)}
+                  className="w-full py-3 bg-[#006a63] hover:bg-[#005550] text-white text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-md"
+                >
+                  S'abonner via Stripe
+                </button>
+              </div>
+            </div>
+
+            {/* Plan 4: Clinique & Groupe */}
+            <div className="bg-white rounded-3xl border border-slate-200/60 p-6 flex flex-col justify-between hover:shadow-md transition-all relative">
+              <div className="space-y-4">
+                <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase">Grands Établissements</span>
+                <h3 className="font-display font-extrabold text-xl text-[#0A192F]">Clinique & Groupe</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#0A192F]">199 €</span>
+                  <span className="text-slate-400 text-xs">/ mois</span>
+                </div>
+                <p className="text-xs text-slate-500">Pour les structures hospitalières, grands cabinets pluridisciplinaires ou réseaux.</p>
+
+                <ul className="space-y-2.5 text-xs text-slate-600 pt-4 border-t border-slate-50">
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Nombre de <strong>protocoles illimité</strong></span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Comptes collaborateurs illimités</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>Accompagnement de déploiement</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-[#006a63] stroke-[3]" />
+                    <span>SLA et support prioritaire 24/7</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-6">
+                <button
+                  onClick={() => openStripeCheckout("clinique", "Clinique & Groupe", 199)}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-[#0A192F] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5"
+                >
+                  S'abonner via Stripe
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
       {/* EXPECTED ACTION: INTERACTIVE ONBOARDING WIZARD */}
       <section ref={accountRef} className="py-20 px-6 max-w-4xl mx-auto">
         <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/50 p-6 sm:p-10 space-y-8 relative overflow-hidden">
@@ -706,7 +954,7 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
               Créer votre espace de veille Auvia
             </h2>
             <p className="text-slate-500 text-xs sm:text-sm">
-              Enregistrez-vous en quelques clics pour configurer votre tableau de conformité personnalisé.
+              Enregistrez-vous en quelques clics pour configurer votre tableau de conformité personnalisé (Essai Gratuit activé par défaut).
             </p>
           </div>
 
@@ -779,7 +1027,13 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
                 <p className="text-xs text-red-600 font-semibold">{formError}</p>
               )}
 
-              <div className="pt-4 flex justify-end">
+              <div className="pt-4 flex justify-between items-center">
+                <button
+                  onClick={scrollToPricing}
+                  className="text-xs font-bold text-[#006a63] hover:underline"
+                >
+                  Voir d'abord les abonnements payants
+                </button>
                 <button 
                   onClick={handleNextStep}
                   className="bg-[#0A192F] hover:bg-slate-800 text-white px-6 py-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
@@ -905,6 +1159,10 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
                   <span className="text-slate-400 font-bold">ENVIRONNEMENT :</span>{" "}
                   <span className="font-semibold text-slate-700">{signupPracticeMode} • {signupRegion}</span>
                 </div>
+                <div>
+                  <span className="text-slate-400 font-bold">ABONNEMENT :</span>{" "}
+                  <span className="font-bold text-[#006a63] bg-teal-50 px-2 py-0.5 rounded">Essai Gratuit (14 jours)</span>
+                </div>
                 <div className="pt-2 border-t border-slate-200/50 flex flex-wrap gap-1.5">
                   <span className="bg-[#4FD1C5]/10 text-[#007169] px-2 py-0.5 rounded text-[10px] font-bold">Radioprotection active</span>
                   <span className="bg-[#4FD1C5]/10 text-[#007169] px-2 py-0.5 rounded text-[10px] font-bold">Stérilisation active</span>
@@ -912,13 +1170,19 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
                 </div>
               </div>
 
-              <div className="pt-4">
+              <div className="pt-4 flex flex-col sm:flex-row justify-center gap-3">
                 <button 
                   onClick={() => onNavigate("saas")}
-                  className="bg-[#0A192F] hover:bg-slate-800 text-white px-8 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 mx-auto shadow-md"
+                  className="bg-[#0A192F] hover:bg-slate-800 text-white px-8 py-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-md"
                 >
                   Consulter mon Espace de Veille IA
                   <ArrowRight className="w-4.5 h-4.5 text-[#4FD1C5]" />
+                </button>
+                <button
+                  onClick={scrollToPricing}
+                  className="px-6 py-4 bg-white border border-slate-200 text-[#0A192F] rounded-xl text-sm font-bold hover:bg-slate-50 transition-all"
+                >
+                  Débloquer les fonctions Pro
                 </button>
               </div>
             </div>
@@ -926,6 +1190,195 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
 
         </div>
       </section>
+
+      {/* STRIPE CHECKOUT MODAL OVERLAY */}
+      <AnimatePresence>
+        {showStripeModal && selectedStripePlan && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row"
+            >
+
+              {/* Left Column: Stripe Cart & Brand Recap */}
+              <div className="bg-[#0A192F] text-white p-8 md:w-5/12 flex flex-col justify-between">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowStripeModal(false)}>
+                    <Compass className="w-5 h-5 text-[#4FD1C5]" />
+                    <span className="font-display font-extrabold text-sm tracking-tight text-white">Auvia</span>
+                  </div>
+
+                  <div className="space-y-1 pt-4">
+                    <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider block">ABONNEMENT</span>
+                    <h4 className="font-display font-extrabold text-base text-[#4FD1C5] leading-snug">{selectedStripePlan.title}</h4>
+                    <p className="text-[11px] text-slate-300">Renouvellement mensuel automatique. Sans engagement.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-12">
+                  <div className="flex justify-between items-baseline border-b border-white/10 pb-3">
+                    <span className="text-slate-400 text-xs font-semibold">Montant HT</span>
+                    <span className="text-slate-200 text-sm font-mono">{Math.round(selectedStripePlan.price / 1.2).toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-baseline border-b border-white/10 pb-3">
+                    <span className="text-slate-400 text-xs font-semibold">TVA (20%)</span>
+                    <span className="text-slate-200 text-sm font-mono">{Math.round(selectedStripePlan.price - (selectedStripePlan.price / 1.2)).toFixed(2)} €</span>
+                  </div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-white font-bold text-sm">Total à payer</span>
+                    <span className="text-[#4FD1C5] text-2xl font-extrabold font-mono">{selectedStripePlan.price.toFixed(2)} €</span>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" /> Paiement 100% sécurisé via Stripe
+                </div>
+              </div>
+
+              {/* Right Column: Stripe Pay Form */}
+              <div className="bg-white p-8 flex-1 flex flex-col justify-between relative">
+
+                {stripeStep === "form" && (
+                  <form onSubmit={handleStripePayment} className="space-y-5">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-1.5">
+                        <CreditCard className="w-5 h-5 text-slate-400" />
+                        <span className="text-xs font-bold text-[#0A192F] uppercase tracking-wider">Informations de Paiement</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowStripeModal(false)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <X className="w-4.5 h-4.5" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase">Titulaire de la carte</label>
+                        <input
+                          type="text"
+                          value={cardHolder}
+                          onChange={(e) => setCardHolder(e.target.value)}
+                          className="w-full text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#4FD1C5]"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase">Numéro de carte de test</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={cardNumber}
+                            onChange={(e) => setCardNumber(e.target.value)}
+                            placeholder="4242 4242 4242 4242"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#4FD1C5] text-slate-700"
+                            required
+                          />
+                          <span className="absolute right-3.5 top-2.5 text-[10px] text-[#006a63] font-bold bg-teal-50 px-2 py-0.5 rounded border border-teal-100">
+                            TEST STRIPE
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase">Expiration</label>
+                          <input
+                            type="text"
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(e.target.value)}
+                            placeholder="MM/AA"
+                            className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#4FD1C5]"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase">Code CVC</label>
+                          <input
+                            type="password"
+                            value={cardCvc}
+                            onChange={(e) => setCardCvc(e.target.value)}
+                            placeholder="123"
+                            maxLength={4}
+                            className="w-full text-xs font-mono px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#4FD1C5]"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {isStripeError && (
+                      <p className="text-xs text-red-600 font-semibold">Veuillez renseigner correctement tous les champs de votre carte.</p>
+                    )}
+
+                    <div className="pt-4 space-y-3">
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-[#006a63] hover:bg-[#005550] text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5"
+                      >
+                        <Lock className="w-3.5 h-3.5" /> Payer et Activer mon abonnement
+                      </button>
+                      <p className="text-[9px] text-slate-400 text-center leading-normal">
+                        En cliquant sur s'abonner, vous acceptez les conditions générales de vente d'Auvia. Fausse transaction à but démonstratif.
+                      </p>
+                    </div>
+                  </form>
+                )}
+
+                {/* Loading / Authorizing screen */}
+                {stripeStep === "loading" && (
+                  <div className="flex-1 flex flex-col items-center justify-center space-y-4 py-12 animate-fadeIn">
+                    <RefreshCw className="w-10 h-10 text-[#006a63] animate-spin stroke-[2.5]" />
+                    <div className="text-center space-y-1">
+                      <h4 className="font-display font-extrabold text-sm text-[#0A192F]">Autorisation bancaire Stripe</h4>
+                      <p className="text-xs text-slate-400">Sécurisation et traitement du flux monétique...</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Success Screen */}
+                {stripeStep === "success" && (
+                  <div className="flex-1 flex flex-col justify-between py-4 animate-fadeIn">
+                    <div className="text-center space-y-4 pt-4">
+                      <div className="w-16 h-16 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                        <Check className="w-8 h-8 stroke-[3]" />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h4 className="font-display font-extrabold text-base text-[#0A192F]">Paiement Validé avec Succès !</h4>
+                        <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                          Votre espace Auvia a été mis à niveau. La facture a été générée et est téléchargeable dans votre espace d'administration.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-8">
+                      <button
+                        onClick={() => {
+                          setShowStripeModal(false);
+                          onNavigate("saas");
+                        }}
+                        className="w-full py-3 bg-[#0A192F] hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        Consulter mon Workspace
+                        <ArrowRight className="w-4 h-4 text-[#4FD1C5]" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Footer */}
       <footer className="bg-[#0A192F] text-slate-400 py-12 px-6 border-t border-slate-800">
