@@ -202,19 +202,47 @@ Exemples :
 
 ---
 
-# 10. Livrables attendus
+# 10. Livrables & Avancement de la Roadmap
 
-Créer :
+L'intégralité de la roadmap initiale pour la phase de prototypage d'**Auvia** a été complétée avec succès. Ci-dessous, l'état d'avancement détaillé par rapport aux objectifs et livrables attendus :
 
-1. Logo principal
-2. Logo icône application
-3. Palette couleurs
-4. Typographies
-5. Design system de base
-6. Exemple d'écran SaaS
-7. Exemple d'application mobile
-8. Carte de visite / page marketing
-9. Guide d'utilisation de la marque
+### 📋 Suivi des Livrables
+
+* [x] **1. Logo principal** — **[STATUT : TERMINÉ]**
+  * *Détails :* Identité visuelle moderne combinant les concepts de guide et de clarté (les cercles concentriques et le signal).
+  * *Où le voir :* Visible dans l'en-tête du site public, du workspace SaaS, et documenté dans le **Brand Center**.
+
+* [x] **2. Logo icône application** — **[STATUT : TERMINÉ]**
+  * *Détails :* Version compacte du logo conçue pour s'adapter aux formats réduits (favicon, icône d'application mobile).
+  * *Où le voir :* Utilisé sur l'écran du simulateur mobile et exposé dans le **Brand Center**.
+
+* [x] **3. Palette de couleurs** — **[STATUT : TERMINÉ]**
+  * *Détails :* Palette premium et sereine s'articulant autour du bleu profond (Deep Midnight Blue `#0A192F` pour la confiance et l'expertise), du turquoise doux (`#4FD1C5` pour l'évolution IA et l'activité de veille) et de nuances de blancs et de gris froids.
+  * *Où le voir :* Configurée via Tailwind CSS et détaillée dans le fichier `DESIGN.md` ainsi que dans l'onglet **Livrables de Marque**.
+
+* [x] **4. Typographies** — **[STATUT : TERMINÉ]**
+  * *Détails :* Duo typographique associant **Plus Jakarta Sans** (élégance géométrique moderne pour les grands titres) et **Inter** (lisibilité exceptionnelle pour les corps de texte et les données de santé réglementées).
+  * *Où le voir :* Configurée globalement et répertoriée dans le **Brand Center**.
+
+* [x] **5. Design system de base** — **[STATUT : TERMINÉ]**
+  * *Détails :* Composants standardisés (boutons primaires/secondaires, champs de saisie à focus lumineux, cartes au niveau de profondeur doux, jetons d'état colorés, indicateurs d'état IA pulsés).
+  * *Où le voir :* Utilisé de manière cohérente dans toute l'application et exposé de façon interactive dans le **Brand Center**.
+
+* [x] **6. Exemple d'écran SaaS (Dashboard)** — **[STATUT : TERMINÉ]**
+  * *Détails :* Centre de pilotage interactif destiné aux professionnels libéraux. Comprend l'état de conformité global en 5 secondes, la gestion des tâches prioritaires IA, la bibliothèque documentaire avec recherche et filtres par statut, l'upload de documents (PDF/DOCX) et le processus d'alignement interactif des protocoles (étapes 1 à 4).
+  * *Où le voir :* Onglet **Écran de Démo SaaS** dans la barre latérale du workspace.
+
+* [x] **7. Exemple d'application mobile** — **[STATUT : TERMINÉ]**
+  * *Détails :* Maquette fonctionnelle de l'application compagnon simulée dans un châssis de téléphone élégant. Comprend l'accès hors-ligne aux protocoles, le fil d'actualités réglementaires, un agent conversationnel d'IA réactif, et le paramétrage des alertes push intelligentes.
+  * *Où le voir :* Onglet **Simulateur Mobile** dans la barre latérale du workspace.
+
+* [x] **8. Carte de visite / page marketing (Landing Page)** — **[STATUT : TERMINÉ]**
+  * *Détails :* Vitrine publique de présentation d'Auvia. Elle introduit la proposition de valeur, un module de démonstration rapide de comparaison de protocole, un simulateur de tarifs transparents, des témoignages clients et un questionnaire d'intégration personnalisé pour adapter l'expérience au profil professionnel sélectionné.
+  * *Où le voir :* Page d'accueil par défaut de l'application (`LandingPage.tsx`).
+
+* [x] **9. Guide d'utilisation de la marque** — **[STATUT : TERMINÉ]**
+  * *Détails :* Documentation centralisée de l'identité visuelle d'Auvia, expliquant l'origine du nom, les valeurs clés de la marque, et les directives d'application de la charte graphique.
+  * *Où le voir :* Section dédiée au sein de l'onglet **Livrables de Marque** (`BrandCenter.tsx`).
 
 ---
 
