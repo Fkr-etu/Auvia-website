@@ -142,13 +142,14 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
             <a href="#pourquoi" className="hover:text-[#0A192F] transition-colors">Pourquoi Auvia</a>
             <a href="#fonctionnement" className="hover:text-[#0A192F] transition-colors">Comment ça marche</a>
             <a href="#valeur" className="hover:text-[#0A192F] transition-colors">Bénéfices clés</a>
-            <button onClick={() => onNavigate("brand")} className="hover:text-[#0A192F] transition-colors">
+            <button id="nav-brand-btn" onClick={() => onNavigate("brand")} className="hover:text-[#0A192F] transition-colors">
               Charte Graphique
             </button>
           </div>
           
           <div className="flex items-center gap-3">
             <button 
+              id="nav-demo-btn"
               onClick={() => onNavigate("saas")}
               className="hidden sm:inline-flex text-xs font-bold text-[#0A192F] hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl transition-all"
             >
@@ -945,11 +946,11 @@ export default function LandingPage({ onNavigate, profile, setProfile }: Landing
           </p>
           
           <div className="flex gap-4 text-xs font-bold">
-            <button onClick={() => onNavigate("brand")} className="hover:text-white transition-colors">Charte Graphique</button>
+            <button id="footer-brand-btn" onClick={() => onNavigate("brand")} className="hover:text-white transition-colors">Charte Graphique</button>
             <span>•</span>
-            <button onClick={() => onNavigate("saas")} className="hover:text-white transition-colors">SaaS Workspace</button>
+            <button id="footer-saas-btn" onClick={() => onNavigate("saas")} className="hover:text-white transition-colors">SaaS Workspace</button>
             <span>•</span>
-            <button onClick={() => onNavigate("mobile")} className="hover:text-white transition-colors">App Mobile</button>
+            <button id="footer-mobile-btn" onClick={() => onNavigate("mobile")} className="hover:text-white transition-colors">App Mobile</button>
           </div>
         </div>
       </footer>

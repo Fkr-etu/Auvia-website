@@ -40,6 +40,7 @@ export default function BrandCenter({ onBack }: BrandCenterProps) {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <button 
+              id="brand-back-btn"
               onClick={onBack}
               className="p-2 hover:bg-slate-50 rounded-xl border border-slate-200 text-slate-600 transition-colors"
               title="Retour à l'accueil"

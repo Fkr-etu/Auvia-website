@@ -62,6 +62,7 @@ export default function MobileSimulator({ onBack }: MobileSimulatorProps) {
         <div className="lg:col-span-5 space-y-6">
           <div className="flex items-center gap-3">
             <button 
+              id="mobile-back-btn"
               onClick={onBack}
               className="p-2 hover:bg-slate-100 rounded-xl border border-slate-200 text-slate-600 transition-all"
             >
