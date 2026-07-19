@@ -1,0 +1,8 @@
+{
+  "name": "Auvia",
+  "description": "SaaS compagnon IA de veille métier, identité visuelle, design system et maquette interactive pour les professionnels de santé libéraux.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
