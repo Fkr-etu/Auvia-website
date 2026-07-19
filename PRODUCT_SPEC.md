@@ -246,3 +246,23 @@ Il protège la qualité de la pratique.
 Il réduit la charge mentale.
 
 Il permet aux experts de rester experts.
+
+---
+
+# 11. Cartographie des Spécifications
+
+La vision produit détaillée dans ce document est déclinée de manière opérationnelle dans notre référentiel de spécifications d'ingénierie :
+
+* **Récits Utilisateurs :** [USER_STORIES.md](./USER_STORIES.md) (Parcours multi-utilisateurs complet).
+* **Expérience Utilisateur (UX) :**
+  * [UX_SPEC/onboarding.md](./UX_SPEC/onboarding.md) (Onboarding et rôles).
+  * [UX_SPEC/dashboard.md](./UX_SPEC/dashboard.md) (Tableau de bord de conformité).
+  * [UX_SPEC/protocols-library.md](./UX_SPEC/protocols-library.md) (Bibliothèque et révision IA).
+* **Architecture Technique :**
+  * [TECH_SPEC/architecture.md](./TECH_SPEC/architecture.md) (Isolation multi-tenant, Sécurité).
+  * [TECH_SPEC/database.md](./TECH_SPEC/database.md) (Schéma relationnel et vectoriel).
+  * [TECH_SPEC/rag.md](./TECH_SPEC/rag.md) (Algorithme de RAG et Grounding).
+  * [TECH_SPEC/connectors.md](./TECH_SPEC/connectors.md) (Connecteurs d'ingestion automatisée).
+* **Dossier de Décision d'Architecture (ADR) :**
+  * [ADR/001-postgresql.md](./ADR/001-postgresql.md) (Base relationnelle primaire).
+  * [ADR/002-vector-search.md](./ADR/002-vector-search.md) (Recherche vectorielle intégrée).

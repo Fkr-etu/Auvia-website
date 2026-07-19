@@ -255,3 +255,29 @@ En voyant Auvia, un professionnel doit ressentir :
 La marque doit inspirer :
 
 **la confiance d'un expert, la simplicité d'un assistant, et l'intelligence d'une IA.**
+
+---
+
+# 12. Organisation du projet (Spec-Driven Development)
+
+Ce projet est organisé selon une méthodologie de développement guidée par les spécifications (*Spec-Driven Development*). Vous trouverez les différentes documentations et spécifications techniques/fonctionnelles dans les dossiers suivants :
+
+* **[PRODUCT_SPEC.md](./PRODUCT_SPEC.md)** : Définition produit globale et vision d'Auvia.
+* **[USER_STORIES.md](./USER_STORIES.md)** : Récits utilisateurs du parcours global de bout en bout (multi-utilisateurs).
+* **[UX_SPEC/](./UX_SPEC/)** : Spécifications de l'expérience utilisateur et des interfaces.
+  * [onboarding.md](./UX_SPEC/onboarding.md) : Parcours d'inscription, de création de cabinet et d'invitation d'équipe.
+  * [dashboard.md](./UX_SPEC/dashboard.md) : Tableau de bord de pilotage et alertes de conformité.
+  * [protocols-library.md](./UX_SPEC/protocols-library.md) : Gestion documentaire et flux de révision assisté par IA.
+* **[TECH_SPEC/](./TECH_SPEC/)** : Spécifications techniques détaillées.
+  * [architecture.md](./TECH_SPEC/architecture.md) : Architecture système globale et sécurité multi-tenant.
+  * [database.md](./TECH_SPEC/database.md) : Schéma de la base de données relationnelle et vectorielle.
+  * [rag.md](./TECH_SPEC/rag.md) : Fonctionnement du moteur RAG, stratégies de chunking et grounding.
+  * [connectors.md](./TECH_SPEC/connectors.md) : Connecteurs d'ingestion automatisée sans intervention humaine.
+* **[FEATURES/](./FEATURES/)** : Spécifications fonctionnelles par fonctionnalité (mode spec).
+  * [F001-auth.md](./FEATURES/F001-auth.md) : Authentification sécurisée et droits RBAC.
+  * [F002-user-profile.md](./FEATURES/F002-user-profile.md) : Profils utilisateurs et configuration du cabinet.
+  * [F003-document-upload.md](./FEATURES/F003-document-upload.md) : Ingestions de fichiers et pipeline de révision IA.
+  * [F004-rag-chat.md](./FEATURES/F004-rag-chat.md) : Chat de recherche conversationnelle contextualisée.
+* **[ADR/](./ADR/)** : Décisions d'architecture clés.
+  * [001-postgresql.md](./ADR/001-postgresql.md) : Choix de PostgreSQL comme base relationnelle primaire.
+  * [002-vector-search.md](./ADR/002-vector-search.md) : Choix de pgvector pour la recherche de similarité sémantique.
