@@ -6,15 +6,23 @@ import {
 } from "lucide-react";
 import { UserProfile, RegulatoryAlert, ActionItem } from "../types";
 
-export default function SaaSDashboard() {
+interface SaaSDashboardProps {
+  profile?: UserProfile;
+  setProfile?: React.Dispatch<React.SetStateAction<UserProfile>>;
+}
+
+export default function SaaSDashboard({ profile: externalProfile, setProfile: externalSetProfile }: SaaSDashboardProps) {
   // 1. Profile Setup State (Step 2 of spec)
-  const [profile, setProfile] = useState<UserProfile>({
+  const [internalProfile, setInternalProfile] = useState<UserProfile>({
     profession: "Chirurgien-Dentiste",
     specialty: "Omnipratique & Chirurgie",
     region: "Île-de-France",
     practiceMode: "Libéral individuel",
     interests: ["Radioprotection", "Stérilisation", "DASRI", "RGPD"]
   });
+
+  const profile = externalProfile || internalProfile;
+  const setProfile = externalSetProfile || setInternalProfile;
   
   const [isEditingProfile, setIsEditingProfile] = useState(false);
 

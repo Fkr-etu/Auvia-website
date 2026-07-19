@@ -4,16 +4,26 @@ import SaaSDashboard from "./components/SaaSDashboard";
 import MobileSimulator from "./components/MobileSimulator";
 import BrandCenter from "./components/BrandCenter";
 import { Compass, BookOpen, Laptop, Phone, ArrowLeft, Layers, Sparkles } from "lucide-react";
+import { UserProfile } from "./types";
 
 export default function App() {
   const [view, setView] = useState<"landing" | "saas" | "mobile" | "brand">("landing");
+  
+  // Lifted User Profile State to dynamically connect landing registration to dashboard
+  const [profile, setProfile] = useState<UserProfile>({
+    profession: "Chirurgien-Dentiste",
+    specialty: "Omnipratique & Chirurgie",
+    region: "Île-de-France",
+    practiceMode: "Libéral individuel",
+    interests: ["Radioprotection", "Stérilisation", "DASRI", "RGPD"]
+  });
 
   // Quick helper to return back to landing
   const handleGoBack = () => setView("landing");
 
   // 1. Landing View
   if (view === "landing") {
-    return <LandingPage onNavigate={setView} />;
+    return <LandingPage onNavigate={setView} profile={profile} setProfile={setProfile} />;
   }
 
   // 2. Mobile Simulator View
@@ -92,7 +102,7 @@ export default function App() {
 
       {/* Main SaaS Dashboard Workspace */}
       <main className="flex-1 overflow-x-hidden">
-        <SaaSDashboard />
+        <SaaSDashboard profile={profile} setProfile={setProfile} />
       </main>
 
     </div>
